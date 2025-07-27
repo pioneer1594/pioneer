@@ -1,39 +1,47 @@
-from flask_wtf import FlaskForm
-from wtforms.validators import DataRequired, Length,EqualTo,ValidationError,Email
-from wtforms import StringField, PasswordField,SubmitField
-from .database import User
+
+from . import db,bcrypt
+#one side must have relationship
+#many side must have foreignkey
+
+class User(db.Model):
+    __tablename__ = 'user'
+    user_id = db.Column(db.Integer, primary_key=True,autoincrement=True,nullable=False)
+    Username = db.Column(db.String(100),nullable=False,unique=True)
+    email=db.Column(db.String(100),nullable=False,unique=True)
+    password=db.Column(db.String(100),nullable=False)
+    CreateDate = db.Column(db.DateTime,nullable=False)
+    #message=db.relationship(class name not table name ,backref=table_name,lazy is used to connect each table
+    messages=db.relationship('Message',backref='user',lazy=True)
 
 
-class RegisterForm(FlaskForm):
+    #declare and assign new attribute
+    #not equal to password In User(in the property passwords should not be equal to User.password)
+    #in route.py,passwords is store form.password and in database.py,passwords property is to get
+    #from User table.and hush
+    #getter
+    @property
+    def passwords(self):
+        return self.password
 
-    # when it is used to product from input twice ,give error(to product from same input)
-    # Custom check if username is already taken
-    # important 'validate' must be included,even function,include validate eg validate_username
-    def validate_username(self, check_username):
+    #in the setter and getter methods, this name should be property's function-name
+    #setter
+    @passwords.setter
+    def passwords(self, password_hash):
+        self.password = bcrypt.generate_password_hash(password_hash).decode('utf-8')
 
-        # (Username=check_username.data)is important similar in the route.py
-        # in this file,when the client take input(must be included .data)
-        # in route.py,form.username.data = in database.py,check_username.data
-        # they are similar input
-        user = User.query.filter_by(Username=check_username.data).first()
-        if user:
-            raise ValidationError("Username already exists and plz use other name ")
-
-    # Custom check if email is already taken
-    def validate_email(self, check_email):
-        email = User.query.filter_by(email=check_email.data).first()
-        if email:
-            raise ValidationError("Email already exists and plz use other email ")
-
-    username = StringField('Username', validators=[Length(min=2, max=20),DataRequired()])
-    email=StringField('Email', validators=[Email(),Length(min=6, max=35),DataRequired()])
-    password= PasswordField('Password', validators=[Length(min=6,max=10),DataRequired()])
-    confirm_password=PasswordField('Confirm Password', validators=[Length(min=6,max=10),EqualTo('password'),DataRequired()])
-    submit = SubmitField('Register')
+class Message(db.Model):
+    __tablename__ = 'message'
+    message_id = db.Column(db.Integer, primary_key=True,autoincrement=True,nullable=False)
+    content = db.Column(db.String(1000),nullable=False)
+    result=db.Column(db.Boolean,nullable=False)
+    reason=db.Column(db.String(1000),nullable=False)
+    CreateDate = db.Column(db.DateTime,nullable=False)
+    user_Id = db.Column(db.Integer, db.ForeignKey("user.user_id"), nullable=False)
 
 
+class scam_analyzer(db.Model):
+    __tablename__ = 'scamanalyzer'
+    id = db.Column(db.Integer, primary_key=True,autoincrement=True,nullable=False)
+    Keywords=db.Column(db.String(100),nullable=False)
+    CreateDate=db.Column(db.DateTime,nullable=False)
 
-class LoginForm(FlaskForm):
-    email=StringField('Email', validators=[DataRequired(), Length(min=6, max=35)])
-    password = PasswordField('Password', validators=[DataRequired()])
-    submit = SubmitField('Login')
